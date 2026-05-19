@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-950 text-gray-100 font-sans antialiased;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #111827; }
+  ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 9999px; }
+}
+
+@layer components {
+  .card {
+    @apply bg-gray-900 border border-gray-800 rounded-xl;
+  }
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .badge {
+    @apply text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+}
+
+/* Markdown report styles — plain CSS to avoid @apply custom-color limits */
+.report-content h1 { font-size: 1.5rem; font-weight: 700; color: #fff; margin: 1.5rem 0 0.75rem; }
+.report-content h2 { font-size: 1.25rem; font-weight: 600; color: #7c9bfb; margin: 1.25rem 0 0.5rem; border-bottom: 1px solid #1f2937; padding-bottom: 4px; }
+.report-content h3 { font-size: 1.1rem; font-weight: 500; color: #e5e7eb; margin: 1rem 0 0.5rem; }
+.report-content p  { color: #d1d5db; line-height: 1.7; margin-bottom: 0.75rem; }
+.report-content ul { list-style: disc; padding-left: 1.5rem; color: #d1d5db; margin-bottom: 0.75rem; }
+.report-content ol { list-style: decimal; padding-left: 1.5rem; color: #d1d5db; margin-bottom: 0.75rem; }
+.report-content li { color: #d1d5db; margin-bottom: 0.25rem; }
+.report-content strong { color: #fff; font-weight: 600; }
+.report-content em { color: #9ca3af; font-style: italic; }
+.report-content hr { border-color: #374151; margin: 1.5rem 0; }
+.report-content code { background: #1f2937; color: #7c9bfb; padding: 2px 6px; border-radius: 4px; font-size: 0.875rem; }
+.report-content blockquote { border-left: 4px solid #3b5bf5; padding-left: 1rem; color: #9ca3af; font-style: italic; margin: 1rem 0; }
