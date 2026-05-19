@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import uuid
 from typing import Dict, Set
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
@@ -10,9 +11,11 @@ from graph.pipeline import run_pipeline
 
 app = FastAPI(title="Research Synthesizer API", version="1.0.0")
 
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
