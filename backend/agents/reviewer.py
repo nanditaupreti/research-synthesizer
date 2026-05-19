@@ -1,18 +1,36 @@
 import json
 from typing import Dict, Any
-import openai
-from config import OPENAI_API_KEY, OPENAI_MODEL
+import google.generativeai as genai
+from config import GEMINI_API_KEY, GEMINI_MODEL
 
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+
+
+def _call_gemini_json(system_prompt: str, user_prompt: str) -> str:
+    model = genai.GenerativeModel(
+        GEMINI_MODEL,
+        system_instruction=system_prompt,
+        generation_config=genai.GenerationConfig(
+            response_mime_type="application/json",
+            temperature=0.1
+        )
+    )
+    response = model.generate_content(user_prompt)
+    return response.text
+
+
+def _call_gemini(system_prompt: str, user_prompt: str, temperature: float = 0.3) -> str:
+    model = genai.GenerativeModel(
+        GEMINI_MODEL,
+        system_instruction=system_prompt,
+        generation_config=genai.GenerationConfig(temperature=temperature, max_output_tokens=3500)
+    )
+    response = model.generate_content(user_prompt)
+    return response.text
 
 
 def score_report(report: str, topic: str) -> Dict:
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": """You are a peer reviewer for research reports. Score and critique the given report.
+    system = """You are a peer reviewer for research reports. Score and critique the given report.
 Return JSON with:
 - completeness_score: 0-10
 - accuracy_score: 0-10
@@ -24,18 +42,11 @@ Return JSON with:
 - missing_elements: any important aspects of the topic not covered
 - suggested_additions: specific content that would improve the report
 - hallucination_flags: any claims that seem potentially inaccurate (list, can be empty)"""
-            },
-            {
-                "role": "user",
-                "content": f"Topic: {topic}\n\nReport to review:\n{report[:4000]}\n\nProvide scoring JSON."
-            }
-        ],
-        temperature=0.1,
-        response_format={"type": "json_object"}
-    )
+
+    user = f"Topic: {topic}\n\nReport to review:\n{report[:4000]}\n\nProvide scoring JSON."
 
     try:
-        return json.loads(response.choices[0].message.content)
+        return json.loads(_call_gemini_json(system, user))
     except Exception:
         return {
             "completeness_score": 7,
@@ -67,12 +78,7 @@ Suggested additions: {suggestions}
 Potential inaccuracies to verify/remove: {json.dumps(flags)}
 """
 
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": """You are an expert editor improving research reports.
+    system = """You are an expert editor improving research reports.
 Revise the report to address the reviewer's feedback.
 - Fix identified weaknesses
 - Add missing elements
@@ -80,17 +86,9 @@ Revise the report to address the reviewer's feedback.
 - Maintain the same structure but enhance quality
 - Preserve all accurate content
 Return the complete improved report in markdown format."""
-            },
-            {
-                "role": "user",
-                "content": f"Topic: {topic}\n\nOriginal report:\n{report}\n\nReviewer feedback:{improvement_instructions}\n\nProvide the improved complete report."
-            }
-        ],
-        temperature=0.3,
-        max_tokens=3500
-    )
 
-    return response.choices[0].message.content
+    user = f"Topic: {topic}\n\nOriginal report:\n{report}\n\nReviewer feedback:{improvement_instructions}\n\nProvide the improved complete report."
+    return _call_gemini(system, user, temperature=0.3)
 
 
 def run_reviewer(topic: str, synthesis_data: Dict) -> Dict[str, Any]:

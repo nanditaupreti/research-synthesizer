@@ -3,10 +3,10 @@ import numpy as np
 from typing import List, Dict, Optional, Any
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import openai
-from config import DATABASE_URL, OPENAI_API_KEY, EMBEDDING_MODEL
+import google.generativeai as genai
+from config import DATABASE_URL, GEMINI_API_KEY, EMBEDDING_MODEL
 
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
 
 
 def get_connection():
@@ -15,8 +15,8 @@ def get_connection():
 
 def get_embedding(text: str) -> List[float]:
     text = text.replace("\n", " ")[:8000]
-    response = client.embeddings.create(input=[text], model=EMBEDDING_MODEL)
-    return response.data[0].embedding
+    result = genai.embed_content(model=EMBEDDING_MODEL, content=text)
+    return result["embedding"]
 
 
 def store_document(content: str, source: str, topic: str, metadata: Dict = None) -> int:

@@ -1,29 +1,26 @@
 import json
 from typing import List, Dict, Any
-import openai
-from config import OPENAI_API_KEY, OPENAI_MODEL, MAX_SEARCH_RESULTS, TAVILY_API_KEY
+import google.generativeai as genai
+from config import GEMINI_API_KEY, GEMINI_MODEL, MAX_SEARCH_RESULTS, TAVILY_API_KEY
 
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+
+
+def _call_gemini(system_prompt: str, user_prompt: str, temperature: float = 0.7) -> str:
+    model = genai.GenerativeModel(GEMINI_MODEL, system_instruction=system_prompt)
+    response = model.generate_content(
+        user_prompt,
+        generation_config=genai.GenerationConfig(temperature=temperature)
+    )
+    return response.text
 
 
 def generate_search_queries(topic: str, existing_context: str = "") -> List[str]:
     context_note = f"\nExisting context available:\n{existing_context[:500]}" if existing_context else ""
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a research strategist. Generate targeted search queries to comprehensively research a topic. Return ONLY a JSON array of 4 specific search query strings."
-            },
-            {
-                "role": "user",
-                "content": f"Generate 4 specific search queries to research: '{topic}'{context_note}\n\nReturn format: [\"query1\", \"query2\", \"query3\", \"query4\"]"
-            }
-        ],
-        temperature=0.7
-    )
+    system = "You are a research strategist. Generate targeted search queries to comprehensively research a topic. Return ONLY a JSON array of 4 specific search query strings."
+    user = f"Generate 4 specific search queries to research: '{topic}'{context_note}\n\nReturn format: [\"query1\", \"query2\", \"query3\", \"query4\"]"
     try:
-        content = response.choices[0].message.content.strip()
+        content = _call_gemini(system, user, temperature=0.7).strip()
         if "```" in content:
             content = content.split("```")[1].replace("json", "").strip()
         return json.loads(content)
@@ -65,22 +62,9 @@ def search_web(query: str) -> List[Dict]:
 
 def research_with_llm(topic: str, query: str, vector_context: str = "") -> str:
     context_note = f"\n\nRelevant context from knowledge base:\n{vector_context}" if vector_context else ""
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are an expert research assistant. Provide detailed, factual information about the query. Include specific data points, statistics, expert opinions, and concrete examples where possible. Be comprehensive and informative."
-            },
-            {
-                "role": "user",
-                "content": f"Research topic: {topic}\nSpecific query: {query}{context_note}\n\nProvide detailed research findings with specific facts, data, and insights. Minimum 200 words."
-            }
-        ],
-        temperature=0.3,
-        max_tokens=1000
-    )
-    return response.choices[0].message.content
+    system = "You are an expert research assistant. Provide detailed, factual information about the query. Include specific data points, statistics, expert opinions, and concrete examples where possible. Be comprehensive and informative."
+    user = f"Research topic: {topic}\nSpecific query: {query}{context_note}\n\nProvide detailed research findings with specific facts, data, and insights. Minimum 200 words."
+    return _call_gemini(system, user, temperature=0.3)
 
 
 def run_researcher(topic: str, vector_context: List[Dict]) -> Dict[str, Any]:

@@ -1,18 +1,26 @@
 import json
 from typing import List, Dict, Any
-import openai
-from config import OPENAI_API_KEY, OPENAI_MODEL
+import google.generativeai as genai
+from config import GEMINI_API_KEY, GEMINI_MODEL
 
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+
+
+def _call_gemini_json(system_prompt: str, user_prompt: str) -> str:
+    model = genai.GenerativeModel(
+        GEMINI_MODEL,
+        system_instruction=system_prompt,
+        generation_config=genai.GenerationConfig(
+            response_mime_type="application/json",
+            temperature=0.2
+        )
+    )
+    response = model.generate_content(user_prompt)
+    return response.text
 
 
 def analyze_finding(topic: str, finding: Dict) -> Dict[str, Any]:
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": """You are an expert research analyst. Analyze research findings and extract structured insights.
+    system = """You are an expert research analyst. Analyze research findings and extract structured insights.
 Return a JSON object with these exact keys:
 - key_facts: list of 3-5 specific factual claims
 - themes: list of 2-3 main themes
@@ -20,18 +28,11 @@ Return a JSON object with these exact keys:
 - reliability_score: float 0-1 (confidence in source quality)
 - insights: 2-3 novel analytical insights not explicitly stated in the text
 - gaps: any missing information that would strengthen the analysis"""
-            },
-            {
-                "role": "user",
-                "content": f"Research topic: {topic}\nQuery: {finding['query']}\n\nContent to analyze:\n{finding['content'][:3000]}\n\nReturn valid JSON only."
-            }
-        ],
-        temperature=0.2,
-        response_format={"type": "json_object"}
-    )
+
+    user = f"Research topic: {topic}\nQuery: {finding['query']}\n\nContent to analyze:\n{finding['content'][:3000]}\n\nReturn valid JSON only."
 
     try:
-        analysis = json.loads(response.choices[0].message.content)
+        analysis = json.loads(_call_gemini_json(system, user))
     except Exception:
         analysis = {
             "key_facts": ["Analysis parsing error"],
@@ -52,12 +53,7 @@ Return a JSON object with these exact keys:
 
 def synthesize_analyses(topic: str, analyses: List[Dict]) -> Dict[str, Any]:
     analyses_text = json.dumps(analyses, indent=2)[:6000]
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": """You are a senior research analyst. Cross-analyze multiple research findings and produce a meta-analysis.
+    system = """You are a senior research analyst. Cross-analyze multiple research findings and produce a meta-analysis.
 Return JSON with:
 - cross_cutting_themes: themes appearing across multiple sources
 - contradictions: any conflicting information found
@@ -65,18 +61,11 @@ Return JSON with:
 - key_takeaways: list of 5 most important insights overall
 - recommended_focus_areas: areas that need more research
 - overall_reliability: float 0-1"""
-            },
-            {
-                "role": "user",
-                "content": f"Topic: {topic}\n\nIndividual analyses:\n{analyses_text}\n\nProvide cross-analysis JSON."
-            }
-        ],
-        temperature=0.2,
-        response_format={"type": "json_object"}
-    )
+
+    user = f"Topic: {topic}\n\nIndividual analyses:\n{analyses_text}\n\nProvide cross-analysis JSON."
 
     try:
-        return json.loads(response.choices[0].message.content)
+        return json.loads(_call_gemini_json(system, user))
     except Exception:
         return {
             "cross_cutting_themes": [],
