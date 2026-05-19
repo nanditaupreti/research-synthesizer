@@ -83,7 +83,7 @@ export default function App() {
       setPipelineStatus('completed')
       setProgress(100)
       if (msg.data) {
-        setFinalData(msg.data as FinalData)
+        setFinalData(msg.data as unknown as FinalData)
         setActiveTab('report')
       }
       fetchSessions()
